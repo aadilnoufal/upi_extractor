@@ -1,1 +1,65 @@
+# version 1,all rights reserved to AADIL NOUFAL
+# email aadilnoufal@gmail.com
+import pytesseract
+import cv2
+import pandas as pd
 
+# Configure tesseract path if it's not in your system's PATH
+pytesseract.pytesseract.tesseract_cmd = r'C:/Users/MEHAK-AADIL/AppData/Local/Programs/Tesseract-OCR/tesseract.exe'
+
+def extract_upi_details(image_path):
+    """Extracts UPI transaction details from an image.
+
+    Args:
+        image_path (str): Path to the image file.
+
+    Returns:
+        dict: A dictionary containing extracted details or None if extraction fails.
+    """
+    try:
+        # Load the image
+        img = cv2.imread(image_path)
+
+        # Convert to grayscale
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # Apply thresholding (adjust values if needed)
+        thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+        # Perform OCR
+        text = pytesseract.image_to_string(thresh)
+
+        # Extract details using string manipulation
+        details = {}
+        lines = text.strip().split('\n')
+
+        for i, line in enumerate(lines):
+            if '₹' in line or 'Rs.' in line: 
+                details['amount'] = line.replace('₹', '').replace('Rs.', '').strip()
+            if 'Paid to' in line:
+                details['paid_to'] = line.split('Paid to')[-1].strip()
+            if 'UPI transaction ID' in line:
+                details['transaction_id'] = line.split(':')[-1].strip()
+            if 'March' in line or 'April' in line or 'May' in line:  # Update with other months
+                details['date'] = line.strip()
+
+        return details
+
+    except Exception as e:
+        print(f"Error processing image {image_path}: {e}")
+        return None
+
+# usage:
+image_folder = 'C:/Users/MEHAK-AADIL/Downloads/upi_txns/'  # Replace with your folder path
+image_files = ['image1.jpeg', 'image2.jpeg', 'image3.jpeg']  # Replace with your image filenames
+
+# Process each image and store details
+all_details = []
+for image_file in image_files:
+    details = extract_upi_details(image_folder + image_file)
+    if details:
+        all_details.append(details)
+
+# Create a Pandas DataFrame
+df = pd.DataFrame(all_details)
+print(df)
